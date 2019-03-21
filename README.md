@@ -1,7 +1,7 @@
 # bc95-ads1115
-# help others to do a c file .The purpose is to establish the I2C between the ads1115 and bc95
-# friend succeeded in making connection between the bc95 and  but failed to get the same connection with ads1115
-# analysis the diifferences the change codes,finally he succeeded 
+# only analysis .The purpose is to establish the I2C between the ads1115 and bc95
+# friend succeeded in making connection between the bc95 and sht30 but failed to get the same connection with ads1115
+
 
 SHT30.c	adm1115main.c 不同点
 1,IIC的选择
