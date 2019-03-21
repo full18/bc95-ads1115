@@ -1,0 +1,91 @@
+#ifdef ___SHT30_C___
+
+#include "ql_type.h"
+#include "ql_system.h"
+#include "ql_iic.h"
+#include "ql_uart.h"
+#include "ql_stdlib.h"
+
+// Define the UART port and the receive data buffer
+static Enum_SerialPort m_myUartPort  = UART_PORT0;
+
+#define DEBUG_PORT  UART_PORT0
+#define DBG_BUF_LEN   512
+static char DBG_BUFFER[DBG_BUF_LEN];
+#define APP_DEBUG(FORMAT,...) {\
+    Ql_memset(DBG_BUFFER, 0, DBG_BUF_LEN);\
+    Ql_sprintf(DBG_BUFFER,FORMAT,##__VA_ARGS__); \
+    if (UART_PORT2 == (DEBUG_PORT)) \
+    {\
+        Ql_Debug_Trace(DBG_BUFFER);\
+    } else {\
+        Ql_UART_Write((Enum_SerialPort)(DEBUG_PORT), (u8*)(DBG_BUFFER), Ql_strlen((const char *)(DBG_BUFFER)));\
+    }\
+}
+
+static void CallBack_UART_Hdlr(Enum_SerialPort port, Enum_UARTEventType msg, bool level, void* customizedPara)
+{
+    
+}
+
+#define SHT30_ADDRESS 		(0x44<<1)
+#define REGISTER_SHT30_VALUE	0x2C
+#define REGISTER_SHT30_VALUE1	0x06
+
+float SHT30_temp_result,SHT30_humidity_result;
+
+void SHT30_reading(void)
+{
+	u8 SHT30_temp[6];
+	SHT30_temp[0] = REGISTER_SHT30_VALUE;
+	SHT30_temp[1] = REGISTER_SHT30_VALUE1;
+	Ql_IIC_Write(0,SHT30_ADDRESS,SHT30_temp,2);
+	Ql_Sleep(100);
+	Ql_IIC_Read(0,SHT30_ADDRESS,SHT30_temp,6);
+	SHT30_temp_result = (float)(((SHT30_temp[0] << 8) | SHT30_temp[1])* 175) / 65535-45;
+	SHT30_humidity_result = (float)((SHT30_temp[3] << 8) | SHT30_temp[4]) / 65535 *100.0f;	
+}
+
+void proc_main_task(s32 taskId)
+{
+    s32 ret;
+    ST_MSG msg;
+    Ql_UART_Register(m_myUartPort, CallBack_UART_Hdlr, NULL);
+    Ql_UART_Open(m_myUartPort, 115200, FC_NONE);
+    ret=Ql_IIC_Init(0,PINNAME_GPIO4,PINNAME_GPIO5,0);
+    if(ret < 0)
+      {
+          APP_DEBUG("\r\n<--Failed!! Ql_IIC_Init channel 0 fail ret=%d-->\r\n",ret);
+      }
+    APP_DEBUG("\r\n<--pins(%d & %d) Ql_IIC_Init channel 0 ret=%d-->\r\n",PINNAME_GPIO4,PINNAME_GPIO5,ret);
+	
+	ret=Ql_IIC_Config(0,TRUE, SHT30_ADDRESS, 0);// simultion IIC interface ,do not care the iic Speed.
+	if(ret < 0)
+     {
+        APP_DEBUG("\r\n<--Failed !!Ql_IIC_Config channel 0 fail ret=%d-->\r\n",ret);
+     }
+    APP_DEBUG("\r\n<--Ql_IIC_Config channel 0 ret=%d-->\r\n",ret);
+
+
+    APP_DEBUG("\r\n<--OpenCPU: SHT30 IIC TEST!-->\r\n"); 
+
+	
+
+    while (1)
+    {
+        //Ql_OS_GetMessage(&msg);
+		SHT30_reading();			
+		APP_DEBUG("SHT_T:%.4f,SHT_H:%.4f\r\n",SHT30_temp_result,SHT30_humidity_result);		
+		Ql_Sleep(500);
+		
+        switch(msg.message)
+        {
+	 	case 0:
+			break;
+        default:
+            break;
+        }
+    }
+}
+
+#endif  // ___SHT30_C___
